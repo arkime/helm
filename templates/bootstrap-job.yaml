@@ -70,6 +70,9 @@ spec:
         volumeMounts:
           - name: arkime-config
             mountPath: /opt/arkime/etc/
+          {{- if .Values.bootstrap.extraVolumeMounts }}
+            {{- toYaml .Values.bootstrap.extraVolumeMounts | nindent 10 }}
+          {{- end }}
         {{- with .Values.bootstrap.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -89,6 +92,9 @@ spec:
       - name: arkime-config
         configMap:
           name: {{ include "arkime.fullname" . }}-config-map
+      {{- if .Values.bootstrap.extraVolumes }}
+        {{- toYaml .Values.bootstrap.extraVolumes | nindent 6 }}
+      {{- end }}
       restartPolicy: Never
   backoffLimit: 4
 

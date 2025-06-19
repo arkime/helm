@@ -94,6 +94,9 @@ spec:
           volumeMounts:
             - name: arkime-config
               mountPath: /opt/arkime/etc/
+            {{- if .Values.sensor.containers.capture.extraVolumeMounts }}
+              {{- toYaml .Values.sensor.containers.capture.extraVolumeMounts | nindent 12 }}
+            {{- end }}
             {{- toYaml .Values.captureViewerVolumes.volumeMounts | nindent 12 }}
           {{- with .Values.sensor.containers.capture.resources }}
           resources:
@@ -120,9 +123,12 @@ spec:
           command:
             {{- toYaml .Values.sensor.containers.viewer.command | nindent 12 }}
           volumeMounts:
-          - name: arkime-config
-            mountPath: /opt/arkime/etc/
-          {{- toYaml .Values.captureViewerVolumes.volumeMounts | nindent 10 }}
+            - name: arkime-config
+              mountPath: /opt/arkime/etc/
+            {{- if .Values.sensor.containers.viewer.extraVolumeMounts }}
+              {{- toYaml .Values.sensor.containers.viewer.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+          {{- toYaml .Values.captureViewerVolumes.volumeMounts | nindent 12 }}
           {{- with .Values.sensor.containers.viewer.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -144,4 +150,7 @@ spec:
         configMap:
           name: {{ include "arkime.fullname" . }}-config-map
       {{- toYaml .Values.captureViewerVolumes.volumes | nindent 6 }}
+      {{- if .Values.sensor.extraVolumes }}
+        {{- toYaml .Values.sensor.extraVolumes | nindent 6 }}
+      {{- end }}
       

@@ -91,8 +91,11 @@ spec:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         volumeMounts:
-        - name: arkime-config
-          mountPath: /opt/arkime/etc/
+          - name: arkime-config
+            mountPath: /opt/arkime/etc/
+          {{- if .Values.cont3xt.extraVolumeMounts }}
+            {{- toYaml .Values.cont3xt.extraVolumeMounts | nindent 10 }}
+          {{- end }}
         {{- with .Values.cont3xt.ports }}
         ports:
           {{- toYaml . | nindent 10 }}
@@ -116,6 +119,9 @@ spec:
       - name: arkime-config
         configMap:
           name: {{ include "arkime.fullname" . }}-config-map
+      {{- if .Values.cont3xt.extraVolumes }}
+        {{- toYaml .Values.cont3xt.extraVolumes | nindent 6 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

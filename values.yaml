@@ -105,6 +105,8 @@ bootstrap:
       memory: 64Mi
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
+  # -- Additional volumes for the controller pod.
+  extraVolumes: []
   nodeSelector:
     kubernetes.io/os: linux
   # -- Additional labels to add into metadata.
@@ -177,6 +179,8 @@ sensor:
       extraVolumeMounts: []
       ports:
         - containerPort: 8005
+  # -- Additional volumes for the sensor pod.
+  extraVolumes: []
 
 # -- centralViewer is a deployment
 centralViewer:
@@ -192,6 +196,8 @@ centralViewer:
       memory: 128Mi
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
+  # -- Additional volumes for the centralViewer pod.
+  extraVolumes: []
   nodeSelector: {}
   # -- Additional labels to add into metadata.
   additionalLabels: {}
@@ -238,6 +244,8 @@ cont3xt:
       memory: 128Mi
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
+  # -- Additional volumes for the cont3xt pod.
+  extraVolumes: []
   nodeSelector: {}
   # -- Additional labels to add into metadata.
   additionalLabels: {}
@@ -284,6 +292,8 @@ wise:
       memory: 128Mi
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
+  # -- Additional volumes for the wise pod.
+  extraVolumes: []
   nodeSelector: {}
   # -- Additional labels to add into metadata.
   additionalLabels: {}
