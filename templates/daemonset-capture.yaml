@@ -1,0 +1,123 @@
+{{- if .Values.capture.enabled -}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "arkime.fullname" . }}-capture
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "arkime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: capture
+  {{- with .Values.capture.additionalAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "arkime.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: capture
+  template:
+    metadata:
+      labels:
+        {{- include "arkime.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: capture
+        {{- with .Values.capture.additionalLabels }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- with .Values.capture.additionalAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "arkime.serviceAccountName" . }}
+      {{- with .Values.capture.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.capture.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
+      {{- with .Values.capture.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
+      {{- with .Values.capture.dnsPolicy }}
+      dnsPolicy: {{ . }}
+      {{- end }}
+      {{- with .Values.capture.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8}}
+      {{- end }}
+      {{- if .Values.capture.hostNetwork }}
+      hostNetwork: true
+      {{- end }}
+      {{- with .Values.capture.schedulerName }}
+      schedulerName: {{ . | quote }}
+      {{- end }}
+      {{- with .Values.capture.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      tolerations:
+        {{- toYaml .Values.capture.tolerations | nindent 8 }}
+      containers:
+        - name: arkime-capture
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 0 # Capture must run as root
+            # privileged: true # This might be required in some OpenShift setups if hostNetwork is not enough. Requires appropriate SCC.
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_ADMIN
+                - NET_RAW
+                - SYS_NICE
+                # - IPC_LOCK # Potentially for memory locking, if needed by capture process & configured
+            seccompProfile:
+              type: "Unconfined" # Capture often needs Unconfined. Ensure 'allowPrivilegedEscalation' is false if possible.
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- if .Values.capture.env }}
+              {{- toYaml .Values.capture.env | nindent 12 }}
+            {{- end }}
+            {{- if .Values.env }}
+              {{- toYaml .Values.env | nindent 12 }}
+            {{- end }}
+          command:
+            {{- toYaml .Values.capture.command | nindent 12 }}
+          volumeMounts:
+            - name: arkime-config
+              mountPath: /opt/arkime/etc/
+            - name: pcap-dir
+              mountPath: /opt/arkime/raw # Standard raw pcap location for Arkime
+            {{- if .Values.capture.extraVolumeMounts }}
+              {{- toYaml .Values.capture.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+          {{- with .Values.capture.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: {{ include "arkime.configMapName" . }}
+      - name: pcap-dir
+        hostPath:
+          path: {{ .Values.capture.pcapPath }}
+          type: DirectoryOrCreate
+      {{- if .Values.capture.extraVolumes }}
+        {{- toYaml .Values.capture.extraVolumes | nindent 6 }}
+      {{- end }}
+{{- end }}

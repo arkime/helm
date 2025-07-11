@@ -1,0 +1,47 @@
+{{- if and .Values.ingress.enabled .Values.cont3xt.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "arkime.fullname" . }}-cont3xt
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "arkime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cont3xt
+  {{- $mergedAnnotations := merge (.Values.ingress.additionalAnnotations | default dict) (.Values.cont3xt.routeAnnotations | default dict) }}
+  {{- if $mergedAnnotations }}
+  annotations:
+    {{- toYaml $mergedAnnotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.host }}
+  host: {{ .Values.ingress.host }}
+  {{- end }}
+  path: {{ .Values.cont3xt.webBasePath }}
+  to:
+    kind: Service
+    name: {{ include "arkime.fullname" . }}-cont3xt
+    weight: 100
+  port:
+    targetPort: arkime-cont3xt
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    termination: {{ .Values.ingress.tls.terminationType | default "edge" }}
+    {{- if eq (.Values.ingress.tls.terminationType | default "edge") "passthrough" }}
+    # Passthrough does not use key/cert here
+    {{- else }}
+      {{- if .Values.ingress.tls.key }}
+    key: |-
+      {{ .Values.ingress.tls.key | nindent 6 }}
+      {{- end }}
+      {{- if .Values.ingress.tls.certificate }}
+    certificate: |-
+      {{ .Values.ingress.tls.certificate | nindent 6 }}
+      {{- end }}
+      {{- if .Values.ingress.tls.caCertificate }}
+    caCertificate: |-
+      {{ .Values.ingress.tls.caCertificate | nindent 6 }}
+      {{- end }}
+    {{- end }}
+    insecureEdgeTerminationPolicy: {{ .Values.ingress.tls.insecureEdgeTerminationPolicy | default "Redirect" }}
+  {{- end }}
+{{- end }}

@@ -1,5 +1,72 @@
-***********************************************************************
-* Arkime *
-***********************************************************************
-  Chart version: {{ .Chart.Version }}
-***********************************************************************
+Arkime has been installed.
+Chart version: {{ .Chart.Version }}
+App version: {{ .Chart.AppVersion }}
+
+Access URLs:
+{{- if .Values.ingress.enabled }}
+  {{- $fullName := include "arkime.fullname" . }}
+  {{- $ingressHost := .Values.ingress.host | default (printf "%s.%s.nip.io" $fullName .Release.Namespace) }}
+  {{- $protocol := "http" }}
+  {{- if .Values.ingress.tls.enabled }}
+    {{- $protocol = "https" }}
+  {{- end }}
+
+  {{- if .Values.centralViewer.enabled }}
+  Central Viewer: {{ $protocol }}://{{ $ingressHost }}/
+  {{- end }}
+  {{- if .Values.cont3xt.enabled }}
+  Cont3xt: {{ $protocol }}://{{ $ingressHost }}{{ .Values.cont3xt.webBasePath }}
+  {{- end }}
+  {{- if .Values.wise.enabled }}
+  WISE: {{ $protocol }}://{{ $ingressHost }}{{ .Values.wise.webBasePath }}
+  {{- end }}
+{{- else }}
+  Note: Ingress/Routes are not enabled. You may need to configure port-forwarding or other means to access the services.
+
+  {{- if .Values.centralViewer.enabled }}
+  Central Viewer Service: {{ include "arkime.fullname" . }}-central-viewer (Port: {{ index .Values.centralViewer.service.ports 0 "port" | default "8005" }})
+  To access via port-forward:
+    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "arkime.fullname" . }}-central-viewer {{ index .Values.centralViewer.service.ports 0 "port" | default "8005" }}:{{ index .Values.centralViewer.service.ports 0 "targetPort" | default "central-viewer" }}
+  Then open http://localhost:{{ index .Values.centralViewer.service.ports 0 "port" | default "8005" }}
+  {{- end }}
+
+  {{- if .Values.cont3xt.enabled }}
+  Cont3xt Service: {{ include "arkime.fullname" . }}-cont3xt (Port: {{ index .Values.cont3xt.service.ports 0 "port" | default "3218" }})
+  To access via port-forward:
+    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "arkime.fullname" . }}-cont3xt {{ index .Values.cont3xt.service.ports 0 "port" | default "3218" }}:{{ index .Values.cont3xt.service.ports 0 "targetPort" | default "cont3xt" }}
+  Then open http://localhost:{{ index .Values.cont3xt.service.ports 0 "port" | default "3218" }}{{ .Values.cont3xt.webBasePath }}
+  {{- end }}
+
+  {{- if .Values.wise.enabled }}
+  WISE Service: {{ include "arkime.fullname" . }}-wise (Port: {{ index .Values.wise.service.ports 0 "port" | default "8081" }})
+  To access via port-forward:
+    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "arkime.fullname" . }}-wise {{ index .Values.wise.service.ports 0 "port" | default "8081" }}:{{ index .Values.wise.service.ports 0 "targetPort" | default "wise" }}
+  Then open http://localhost:{{ index .Values.wise.service.ports 0 "port" | default "8081" }}{{ .Values.wise.webBasePath }}
+  {{- end }}
+{{- end }}
+
+{{- if .Values.centralViewer.enabled }}
+Create an Arkime Admin User (if not already created and bootstrap was run):
+  kubectl exec -it -n {{ .Release.Namespace }} deployment/{{ include "arkime.fullname" . }}-central-viewer -- /opt/arkime/bin/arkime_add_user.sh admin "Admin User" YOUR_PASSWORD_HERE --admin --insecure
+  (Replace YOUR_PASSWORD_HERE with a strong password)
+{{- end }}
+
+OpenShift Specific Notes:
+{{- if eq .Values.ingress.type "route" }}
+  Routes have been created for enabled services.
+  To get the host for a route, run:
+    oc get route -n {{ .Release.Namespace }} <route-name> -o jsonpath='{.spec.host}'
+  Example for central viewer:
+    oc get route -n {{ .Release.Namespace }} {{ include "arkime.fullname" . }}-central-viewer -o jsonpath='{.spec.host}'
+  If you are using self-signed certificates or a custom CA for your routes, ensure your browser trusts them.
+{{- else if .Values.ingress.enabled }}
+  You are using Ingress resources. Ensure your Ingress controller is configured correctly for your OpenShift cluster.
+  For OpenShift, using Routes (set `ingress.type: route` in values.yaml) is often preferred.
+{{- end }}
+
+The capture component (if enabled) requires privileged access (hostNetwork, specific capabilities).
+In OpenShift, this typically requires a custom SecurityContextConstraint (SCC) or adding the service account '{{ include "arkime.serviceAccountName" . }}' to an appropriate existing SCC (e.g., 'privileged' or a custom one).
+Example to add to 'privileged' SCC (use with caution):
+  oc adm policy add-scc-to-user privileged -z {{ include "arkime.serviceAccountName" . }} -n {{ .Release.Namespace }}
+
+If using hostPath for PCAP storage (`capture.pcapPath`), ensure the directory exists on the nodes and has appropriate permissions for the Arkime capture process (running as root within the container). For production OpenShift, consider using a PersistentVolumeClaim with appropriate fsGroup/supplementalGroups in the capture pod's securityContext.

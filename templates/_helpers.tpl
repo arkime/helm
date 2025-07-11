@@ -101,6 +101,28 @@ Create the name of the service account to use
 {{- end -}}
 
 {{/*
+Return the appropriate apiVersion for network policies.
+*/}}
+{{- define "arkime.networkPolicy.apiVersion" -}}
+{{- if semverCompare ">=1.7-0" .Capabilities.KubeVersion.GitVersion -}}
+networking.k8s.io/v1
+{{- else -}}
+extensions/v1beta1
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the name of the configMap to use
+*/}}
+{{- define "arkime.configMapName" -}}
+{{- if .Values.configMap.create }}
+{{- default (printf "%s-config" (include "arkime.fullname" .)) .Values.configMap.name }}
+{{- else }}
+{{- .Values.configMap.name }}
+{{- end }}
+{{- end -}}
+
+{{/*
 The image to use
 */}}
 {{- define "arkime.image" -}}

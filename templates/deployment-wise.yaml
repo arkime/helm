@@ -1,3 +1,4 @@
+{{- if .Values.wise.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,31 +6,34 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "arkime.labels" . | nindent 4 }}
-  {{- with .Values.additionalAnnotations }}
+    app.kubernetes.io/component: wise
+  {{- with .Values.wise.additionalAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   replicas: {{ .Values.wise.replicas }}
-  revisionHistoryLimit: {{ .Values.wise.revisionHistoryLimit }}
+  {{- with .Values.wise.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
   {{- with .Values.wise.strategy }}
   strategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "arkime.fullname" . }}
-      app.kubernetes.io/instance: wise
+      {{- include "arkime.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: wise
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "arkime.fullname" . }}
-        app.kubernetes.io/instance: wise
-        {{- with .Values.podLabels }}
+        {{- include "arkime.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: wise
+        {{- with .Values.wise.additionalLabels }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
-        {{- with .Values.wise.podAnnotations }}
+        {{- with .Values.wise.additionalAnnotations }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
@@ -80,11 +84,20 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
-          {{- if .Values.wise.env }} 
-            {{- toYaml .Values.wise.env | nindent 10 }}
+          {{- range .Values.wise.env }}
+          - name: {{ .name }}
+            value: {{ .value | quote }}
           {{- end }}
-          {{- if .Values.env }}
-            {{- toYaml .Values.env | nindent 10 }}
+          # Ensure ARKIME_wiseService__webBasePath is set from the specific value
+          - name: ARKIME_wiseService__webBasePath
+            value: {{ .Values.wise.webBasePath | quote }}
+          {{- if .Values.env }} # Global envs
+            {{- range .Values.env }}
+            {{- if ne .name "ARKIME_wiseService__webBasePath" }} # Avoid duplicating if present in global
+          - name: {{ .name }}
+            value: {{ .value | quote }}
+            {{- end }}
+            {{- end }}
           {{- end }}
         {{- with .Values.wise.envFrom }}
         envFrom:
@@ -105,9 +118,9 @@ spec:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         securityContext:
-          runAsUser: 65532
-          runAsGroup: 65532
           runAsNonRoot: true
+          # runAsUser: 1001 # OpenShift assigns
+          # runAsGroup: 1001 # OpenShift assigns
           seccompProfile:
             type: RuntimeDefault
           allowPrivilegeEscalation: false
@@ -118,7 +131,7 @@ spec:
       volumes:
       - name: arkime-config
         configMap:
-          name: {{ include "arkime.fullname" . }}-config-map
+          name: {{ include "arkime.configMapName" . }} # Use helper
       {{- if .Values.wise.extraVolumes }}
         {{- toYaml .Values.wise.extraVolumes | nindent 6 }}
       {{- end }}
@@ -130,14 +143,14 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "arkime.labels" . | nindent 4 }}
-  {{- with .Values.additionalAnnotations }}
+  {{- with .Values.wise.additionalAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   selector:
-    app.kubernetes.io/name: {{ include "arkime.fullname" . }}
-    app.kubernetes.io/instance: wise
+    {{- include "arkime.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: wise
   {{- with .Values.wise.service.ports }}
   ports:
     {{- toYaml . | nindent 12 }}
@@ -147,6 +160,9 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: {{ include "arkime.fullname" . }}-wise
+  labels:
+    {{- include "arkime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: wise
 spec:
   {{- with .Values.wise.podDisruptionBudget.minAvailable }}
   minAvailable: {{ . }}
@@ -156,5 +172,6 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "arkime.fullname" . }}
-      app.kubernetes.io/instance: wise
+      {{- include "arkime.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: wise
+{{- end }}

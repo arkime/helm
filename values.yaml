@@ -2,35 +2,60 @@
 nameOverride: ""
 # -- Overrides the chart's computed fullname.
 fullnameOverride: ""
+
 # -- Create a service account for all pods to use
 serviceAccount:
   create: true
-  name: arkime
+  name: "" # Defaults to <fullname>-<component> if not set
   annotations: {}
+  # -- Whether to automount API credentials for the Service Account
+  automountServiceAccountToken: false
 
 # -- Create a Self-Signed CA with an Issuer. This is not recommended for production use.
 selfSignedCA: false
-ingress:
+
+# -- Ingress/Route settings
+ingress: # Ingress for Kubernetes, Route for OpenShift
   enabled: true
+  # For OpenShift, set to 'route' to create Route resources instead of Ingress
+  # For Kubernetes, typically 'ingress'
+  type: ingress # or 'route'
   additionalAnnotations: {}
-    # cert-manager.io/cluster-issuer: arkime-self-signed-ca
-  ingressClassName: "nginx"
-  # -- Hosts are used to populate the TLS cert SANs
-  # tls:
-  #   - hosts:
-  #     - 127.0.0.1
-  #     - localhost
-  #     # -- Secret name for the TLS certificate
-  #     secretName: arkime-ingress-tls
+    # cert-manager.io/cluster-issuer: arkime-self-signed-ca # Example for cert-manager with Ingress
+    # route.openshift.io/termination: "edge" # Example for OpenShift Route
+  ingressClassName: "nginx" # Only used if type is 'ingress'
+  # -- Hosts are used to populate the TLS cert SANs (for Ingress) or host field (for Route)
+  # host: arkime.example.com
+  tls: # Common TLS settings for Ingress and Route
+    # enabled: true # Enable TLS
+    # secretName: arkime-tls-secret # Name of the k8s secret that contains TLS cert and key
+    # For Ingress, this secret is referenced directly.
+    # For OpenShift Routes, you might need to specify key, certificate, caCertificate if not using a pre-existing secret.
+    # key: |-
+    #   -----BEGIN PRIVATE KEY-----
+    #   ...
+    #   -----END PRIVATE KEY-----
+    # certificate: |-
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
+    # caCertificate: |- # Optional, for mutual TLS or custom CA
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
+    insecureEdgeTerminationPolicy: Redirect # For OpenShift Route: None, Allow, Redirect
 
 # -- Arkime Configuration (config.ini)
 configMap:  
   # -- Create a ConfigMap with Arkime configuration (config.ini)
   create: true
   # -- If create: true, this is the name of the arkime-configmap. If false, this is the name of an existing arkime configmap you have created.
-  name: arkime-config
+  name: "" # Defaults to <fullname>-config if not set
   # -- Arkime configuration (config.ini)
-  config: ""
+  config: |
+    [default]
+    rotateIndex=daily
+    # Add other default Arkime configurations here
 
 # -- Global envs that apply to all pods
 env:
@@ -84,25 +109,18 @@ image:
 # -- Global image pull secrets for container images.
 imagePullSecrets: []
 
-# -- volumes that are shared between the capture and viewer daemonsets 
-captureViewerVolumes:
-  volumes:
-    - name: pcap-dir
-      hostPath:
-        path: /pcap
-        type: DirectoryOrCreate
-  volumeMounts:
-    - name: pcap-dir
-      mountPath: /opt/arkime/raw
-
 # -- bootstrap is a job that inits the OpenSearch / ElasticSearch database
 bootstrap:
+  enabled: true # Explicitly enable bootstrap job, can be set to false if db is already initialized
   env: []
   envFrom: []
   resources:
     requests:
       cpu: 100m
-      memory: 64Mi
+      memory: 128Mi # Increased memory for bootstrap job
+    limits:
+      cpu: 200m
+      memory: 256Mi
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
   # -- Additional volumes for the controller pod.
@@ -125,66 +143,69 @@ bootstrap:
   #    - name: ndots
   #      value: "1"
 
-
-# -- sensor is a daemonset that runs both capture and (optionally) viewer
-sensor:
+# -- capture component configuration
+capture:
+  enabled: true
+  # -- hostPath where pcap files are stored.
+  # For OpenShift, this directory needs appropriate permissions or use a PersistentVolumeClaim.
+  pcapPath: /pcap
   nodeSelector:
     kubernetes.io/os: linux
     # -- Add this label to the node to restrict capture to specific nodes
     # arkime-capture: "true"
-  # -- Additional labels to add into metadata.
   additionalLabels: {}
-  # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
-  # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations:
     - key: CriticalAddonsOnly
       operator: Exists
-  # -- Specify which Kubernetes scheduler should dispatch the pod.
   schedulerName: default-scheduler
-  # -- Configure the DNS Policy for the pod
   dnsPolicy: ClusterFirst
-  # -- Configure DNS Config for the pod
   dnsConfig: {}
-  #  options:
-  #    - name: ndots
-  #      value: "1"
-  podSecurityContext:
-    fsGroup: 65532
-  containers:
-    capture:
-      command: ["/bin/sh", "-c", "/opt/arkime/bin/docker.sh capture --insecure --host ${POD_IP} --node ${NODE_NAME}"]
-      env:
-        - name: ARKIME__interface
-          value: "eth0"
-        - name: ARKIME__pcapReadMethod
-          value: tpacketv3
-      envFrom: []
-      resources:
-        requests:
-          cpu: 100m
-          memory: 256Mi
-      # -- Additional volumeMounts for the controller pod.
-      extraVolumeMounts: []
-    viewer:
-      enabled: true
-      command: ["/bin/sh", "-c", "/opt/arkime/bin/docker.sh viewer --insecure --host ${POD_IP} --node ${NODE_NAME}"]
-      env: []
-      envFrom: []
-      resources:
-        requests:
-          cpu: 100m
-          memory: 128Mi
-      # -- Additional volumeMounts for the controller pod.
-      extraVolumeMounts: []
-      ports:
-        - containerPort: 8005
-  # -- Additional volumes for the sensor pod.
+  # hostNetwork is often required for capture to access network interfaces directly.
+  # Ensure this is acceptable in your OpenShift environment and SCCs are configured.
+  hostNetwork: true
+  podSecurityContext: {} # Adjusted for OpenShift, will run as root due to hostNetwork and capture needs
+  command: ["/bin/sh", "-c", "/opt/arkime/bin/docker.sh capture --insecure --host ${POD_IP} --node ${NODE_NAME}"]
+  env:
+    - name: ARKIME__interface
+      value: "eth0" # Adjust this to your primary network interface for capture
+    - name: ARKIME__pcapReadMethod
+      value: tpacketv3
+  envFrom: []
+  resources:
+    requests:
+      cpu: 500m # Increased CPU for capture
+      memory: 512Mi # Increased memory for capture
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+  extraVolumeMounts: []
   extraVolumes: []
 
-# -- centralViewer is a deployment
+# -- viewer component configuration (can be run as part of sensor or standalone central viewer)
+viewer:
+  enabled: true # This flag is for the viewer run alongside capture (formerly part of sensor)
+  # If centralViewer.enabled is true, this specific viewer might be redundant unless needed on each capture node.
+  # Consider disabling this if centralViewer is the primary UI.
+  command: ["/bin/sh", "-c", "/opt/arkime/bin/docker.sh viewer --insecure --host ${POD_IP} --node ${NODE_NAME}"]
+  env: []
+  envFrom: []
+  resources:
+    requests:
+      cpu: 200m # Adjusted resources
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  extraVolumeMounts: []
+  ports:
+    - containerPort: 8005 # Default Arkime viewer port
+      name: viewer-port
+
+# -- centralViewer is a deployment for a standalone, centralized viewer UI
 centralViewer:
-  replicas: 2
+  enabled: true
+  replicas: 1 # Adjusted default replicas
   command: ["/opt/arkime/bin/docker.sh", "viewer", "--insecure", "-n", "centralViewer"]
   env:
     - name: ARKIME_valueDASHactions__cont3xt
@@ -192,8 +213,8 @@ centralViewer:
   envFrom: []
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 200m
+      memory: 512Mi # Increased memory for central viewer
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
   # -- Additional volumes for the centralViewer pod.
@@ -203,6 +224,8 @@ centralViewer:
   additionalLabels: {}
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
+  # -- Additional route specific annotations to add into metadata
+  routeAnnotations: {}
 
   # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations: []
@@ -232,16 +255,21 @@ centralViewer:
 
 # -- cont3xt is a deployment
 cont3xt:
-  replicas: 2
+  enabled: true
+  replicas: 1 # Adjusted default replicas
+  webBasePath: "/cont3xt/" # Moved from env array for easier access
   command: ["/opt/arkime/bin/docker.sh", "cont3xt", "--insecure"]
-  env:
+  env: # This env section in values.yaml is for default static values if not templated in deployment
     - name: ARKIME_cont3xt__webBasePath
-      value: "/cont3xt/"
+      value: "/cont3xt/" # Static default value
   envFrom: []
   resources:
     requests:
       cpu: 100m
-      memory: 128Mi
+      memory: 512Mi # Increased memory for central viewer
+    limits:
+      cpu: 500m
+      memory: "1Gi"
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
   # -- Additional volumes for the cont3xt pod.
@@ -251,6 +279,8 @@ cont3xt:
   additionalLabels: {}
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
+  # -- Additional route specific annotations to add into metadata
+  routeAnnotations: {}
 
   # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations: []
@@ -280,16 +310,21 @@ cont3xt:
 
 # -- wise is a deployment
 wise:
-  replicas: 2
+  enabled: true
+  replicas: 1 # Adjusted default replicas
+  webBasePath: "/wise/" # Moved from env array for easier access
   command: ["/opt/arkime/bin/docker.sh", "wise", "--", "-c", "elasticsearch://usersElasticsearch/arkime_configs/_doc/wise", "--insecure", "--webconfig", "--webcode", "0000"]
-  env:
+  env: # This env section in values.yaml is for default static values if not templated in deployment
     - name: ARKIME_wiseService__webBasePath
-      value: "/wise/"
+      value: "/wise/" # Static default value
   envFrom: []
   resources:
     requests:
       cpu: 100m
-      memory: 128Mi
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
   # -- Additional volumeMounts for the controller pod.
   extraVolumeMounts: []
   # -- Additional volumes for the wise pod.
@@ -299,6 +334,8 @@ wise:
   additionalLabels: {}
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
+  # -- Additional route specific annotations to add into metadata
+  routeAnnotations: {}
 
   # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations: []

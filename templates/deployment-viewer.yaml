@@ -1,0 +1,145 @@
+{{- if .Values.viewer.enabled -}}
+apiVersion: apps/v1
+kind: Deployment # Changed from DaemonSet to Deployment for viewer
+metadata:
+  name: {{ include "arkime.fullname" . }}-viewer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "arkime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: viewer
+  {{- with .Values.viewer.additionalAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.viewer.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "arkime.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: viewer
+  template:
+    metadata:
+      labels:
+        {{- include "arkime.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: viewer
+        {{- with .Values.viewer.additionalLabels }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- with .Values.viewer.additionalAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "arkime.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        # runAsUser: 1001 # OpenShift will assign a user ID from the project's range
+        # fsGroup: 1001 # OpenShift will assign a group ID
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.viewer.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
+      {{- with .Values.viewer.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
+      {{- with .Values.viewer.dnsPolicy }}
+      dnsPolicy: {{ . }}
+      {{- end }}
+      {{- with .Values.viewer.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8}}
+      {{- end }}
+      {{- with .Values.viewer.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.viewer.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: arkime-viewer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: # Container-level security context
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME # This might be less relevant for a Deployment vs DaemonSet
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- if .Values.viewer.env }}
+              {{- toYaml .Values.viewer.env | nindent 12 }}
+            {{- end }}
+            {{- if .Values.env }}
+              {{- toYaml .Values.env | nindent 12 }}
+            {{- end }}
+          command:
+            {{- toYaml .Values.viewer.command | nindent 12 }}
+          volumeMounts:
+            - name: arkime-config
+              mountPath: /opt/arkime/etc/
+            # Viewer typically doesn't need direct pcap access, but can if configured for local node viewing
+            # If viewer needs pcap access similar to capture, uncomment below and ensure values.viewer.pcapPath is set
+            # - name: pcap-dir
+            #   mountPath: /opt/arkime/raw
+            {{- if .Values.viewer.extraVolumeMounts }}
+              {{- toYaml .Values.viewer.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+          {{- with .Values.viewer.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.viewer.ports }}
+          ports:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: {{ include "arkime.configMapName" . }}
+      # If viewer needs pcap access similar to capture, uncomment below and ensure values.viewer.pcapPath is set
+      # - name: pcap-dir
+      #   hostPath:
+      #     path: {{ .Values.viewer.pcapPath }} # Ensure this value exists or provide a default
+      #     type: DirectoryOrCreate
+      {{- if .Values.viewer.extraVolumes }}
+        {{- toYaml .Values.viewer.extraVolumes | nindent 6 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "arkime.fullname" . }}-viewer # Service for the non-central viewer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "arkime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: viewer
+  {{- with .Values.viewer.serviceAnnotations }} # Using specific annotations for viewer service
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    {{- include "arkime.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: viewer
+  ports:
+    - name: http-viewer
+      protocol: TCP
+      port: {{ (index .Values.viewer.ports 0).containerPort | default 8005 }}
+      targetPort: {{ (index .Values.viewer.ports 0).name | default "viewer-port" }}
+  type: ClusterIP # Or LoadBalancer/NodePort if external access is needed directly for these viewers
+{{- end }}

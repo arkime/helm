@@ -1,3 +1,4 @@
+{{- if .Values.bootstrap.enabled -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -15,11 +16,11 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "arkime.fullname" . }}
         app.kubernetes.io/instance: bootstrap
-        {{- with .Values.podLabels }}
+        {{- with .Values.bootstrap.additionalLabels }} # Changed from .Values.podLabels
           {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
-        {{- with .Values.bootstrap.podAnnotations }}
+        {{- with .Values.bootstrap.additionalAnnotations }} # Changed from .Values.bootstrap.podAnnotations
           {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
@@ -78,23 +79,25 @@ spec:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         securityContext:
-          runAsUser: 65532
-          runAsGroup: 65532
           runAsNonRoot: true
+        # OpenShift will assign a user ID from the project's range.
+        # runAsUser: 1001
+        # fsGroup: 1001
           seccompProfile:
             type: RuntimeDefault
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: true # Ensure config can be written if needed, or mount tmpfs
           capabilities:
             drop:
               - ALL
       volumes:
       - name: arkime-config
         configMap:
-          name: {{ include "arkime.fullname" . }}-config-map
+          name: {{ include "arkime.configMapName" . }} # Use helper for configmap name
       {{- if .Values.bootstrap.extraVolumes }}
         {{- toYaml .Values.bootstrap.extraVolumes | nindent 6 }}
       {{- end }}
       restartPolicy: Never
   backoffLimit: 4
+{{- end }}
 

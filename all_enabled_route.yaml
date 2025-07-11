@@ -1,0 +1,877 @@
+---
+# Source: arkime/templates/deployment-central-viewer.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: release-name-arkime-central-viewer
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: central-viewer
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: central-viewer
+---
+# Source: arkime/templates/deployment-cont3xt.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: release-name-arkime-cont3xt
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: cont3xt
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: cont3xt
+---
+# Source: arkime/templates/deployment-wise.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: release-name-arkime-wise
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: wise
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: wise
+---
+# Source: arkime/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+automountServiceAccountToken: false
+metadata:
+  name: release-name-arkime
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+---
+# Source: arkime/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: release-name-arkime-config # Use helper for name
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+data:
+  config.ini: |
+
+    [default]
+    rotateIndex=daily
+    # Add other default Arkime configurations here
+---
+# Source: arkime/templates/deployment-central-viewer.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-arkime-central-viewer
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+spec:
+  selector:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/component: central-viewer
+  ports:
+            - name: arkime-central-viewer
+              port: 8005
+              protocol: TCP
+              targetPort: central-viewer
+---
+# Source: arkime/templates/deployment-cont3xt.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-arkime-cont3xt
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+spec:
+  selector:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/component: cont3xt
+  ports:
+            - name: arkime-cont3xt
+              port: 3218
+              protocol: TCP
+              targetPort: cont3xt
+---
+# Source: arkime/templates/deployment-viewer.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-arkime-viewer # Service for the non-central viewer
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: viewer
+spec:
+  selector:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/component: viewer
+  ports:
+    - name: http-viewer
+      protocol: TCP
+      port: 8005
+      targetPort: viewer-port
+  type: ClusterIP # Or LoadBalancer/NodePort if external access is needed directly for these viewers
+---
+# Source: arkime/templates/deployment-wise.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-name-arkime-wise
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+spec:
+  selector:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/component: wise
+  ports:
+            - name: arkime-wise
+              port: 8081
+              protocol: TCP
+              targetPort: wise
+---
+# Source: arkime/templates/daemonset-capture.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: release-name-arkime-capture
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: capture
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: capture
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arkime
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/component: capture
+      annotations:
+    spec:
+      serviceAccountName: release-name-arkime
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      schedulerName: "default-scheduler"
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+      containers:
+        - name: arkime-capture
+          image: "ghcr.io/arkime/arkime/arkime:v5-latest"
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 0 # Capture must run as root
+            # privileged: true # This might be required in some OpenShift setups if hostNetwork is not enough. Requires appropriate SCC.
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_ADMIN
+                - NET_RAW
+                - SYS_NICE
+                # - IPC_LOCK # Potentially for memory locking, if needed by capture process & configured
+            seccompProfile:
+              type: "Unconfined" # Capture often needs Unconfined. Ensure 'allowPrivilegedEscalation' is false if possible.
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ARKIME__interface
+              value: eth0
+            - name: ARKIME__pcapReadMethod
+              value: tpacketv3
+            - name: ARKIME__elasticsearch
+              value: https://arkime-opensearch:9200
+            - name: ARKIME__elasticsearchBasicAuth
+              valueFrom:
+                secretKeyRef:
+                  key: elasticsearchBasicAuth
+                  name: arkime-elasticsearch-basic-auth
+            - name: ARKIME__serverSecret
+              valueFrom:
+                secretKeyRef:
+                  key: serverSecret
+                  name: arkime-server-secret
+                  optional: true
+            - name: ARKIME__passwordSecret
+              valueFrom:
+                secretKeyRef:
+                  key: passwordSecret
+                  name: arkime-password-secret
+                  optional: true
+            - name: ARKIME__debug
+              value: "0"
+            - name: ARKIME__plugins
+              value: wise.so
+            - name: ARKIME__wiseURL
+              value: http://arkime-wise.arkime.svc.cluster.local:8081
+            - name: ARKIME_centralViewer__plugins
+              value: wise.js
+          command:
+            - /bin/sh
+            - -c
+            - /opt/arkime/bin/docker.sh capture --insecure --host ${POD_IP} --node ${NODE_NAME}
+          volumeMounts:
+            - name: arkime-config
+              mountPath: /opt/arkime/etc/
+            - name: pcap-dir
+              mountPath: /opt/arkime/raw # Standard raw pcap location for Arkime
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: release-name-arkime-config
+      - name: pcap-dir
+        hostPath:
+          path: /pcap
+          type: DirectoryOrCreate
+---
+# Source: arkime/templates/deployment-central-viewer.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-arkime-central-viewer
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: central-viewer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: central-viewer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arkime
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/component: central-viewer
+      annotations:
+    spec:
+      serviceAccountName: release-name-arkime
+      dnsPolicy: ClusterFirst
+      schedulerName: "default-scheduler"
+      containers:
+      - name: arkime-central-viewer
+        image: "ghcr.io/arkime/arkime/arkime:v5-latest"
+        imagePullPolicy:
+        command:
+          - /opt/arkime/bin/docker.sh
+          - viewer
+          - --insecure
+          - -n
+          - centralViewer
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: ARKIME_valueDASHactions__cont3xt
+            value: url:/cont3xt/?q=%TEXT%;name:Query Cont3xt;category:ip,host,user,md5,sha256
+          - name: ARKIME__elasticsearch
+            value: https://arkime-opensearch:9200
+          - name: ARKIME__elasticsearchBasicAuth
+            valueFrom:
+              secretKeyRef:
+                key: elasticsearchBasicAuth
+                name: arkime-elasticsearch-basic-auth
+          - name: ARKIME__serverSecret
+            valueFrom:
+              secretKeyRef:
+                key: serverSecret
+                name: arkime-server-secret
+                optional: true
+          - name: ARKIME__passwordSecret
+            valueFrom:
+              secretKeyRef:
+                key: passwordSecret
+                name: arkime-password-secret
+                optional: true
+          - name: ARKIME__debug
+            value: "0"
+          - name: ARKIME__plugins
+            value: wise.so
+          - name: ARKIME__wiseURL
+            value: http://arkime-wise.arkime.svc.cluster.local:8081
+          - name: ARKIME_centralViewer__plugins
+            value: wise.js
+        volumeMounts:
+          - name: arkime-config
+            mountPath: /opt/arkime/etc/
+        ports:
+          - containerPort: 8005
+            name: central-viewer
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        securityContext:
+          runAsNonRoot: true
+          # runAsUser: 1001 # OpenShift assigns
+          # runAsGroup: 1001 # OpenShift assigns
+          seccompProfile:
+            type: RuntimeDefault
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: release-name-arkime-config # Use helper
+---
+# Source: arkime/templates/deployment-cont3xt.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-arkime-cont3xt
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: cont3xt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: cont3xt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arkime
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/component: cont3xt
+      annotations:
+    spec:
+      serviceAccountName: release-name-arkime
+      dnsPolicy: ClusterFirst
+      schedulerName: "default-scheduler"
+      containers:
+      - name: arkime-cont3xt
+        image: "ghcr.io/arkime/arkime/arkime:v5-latest"
+        imagePullPolicy:
+        command:
+          - /opt/arkime/bin/docker.sh
+          - cont3xt
+          - --insecure
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: ARKIME_cont3xt__webBasePath
+            value: "/cont3xt/"
+          # Ensure ARKIME_cont3xt__webBasePath is set from the specific value
+          - name: ARKIME_cont3xt__webBasePath
+            value: "/cont3xt/" # Global envs # Avoid duplicating if present in global
+          - name: ARKIME__elasticsearch
+            value: "https://arkime-opensearch:9200" # Avoid duplicating if present in global
+          - name: ARKIME__elasticsearchBasicAuth
+            value:  # Avoid duplicating if present in global
+          - name: ARKIME__serverSecret
+            value:  # Avoid duplicating if present in global
+          - name: ARKIME__passwordSecret
+            value:  # Avoid duplicating if present in global
+          - name: ARKIME__debug
+            value: "0" # Avoid duplicating if present in global
+          - name: ARKIME__plugins
+            value: "wise.so" # Avoid duplicating if present in global
+          - name: ARKIME__wiseURL
+            value: "http://arkime-wise.arkime.svc.cluster.local:8081" # Avoid duplicating if present in global
+          - name: ARKIME_centralViewer__plugins
+            value: "wise.js"
+        volumeMounts:
+          - name: arkime-config
+            mountPath: /opt/arkime/etc/
+        ports:
+          - containerPort: 3218
+            name: cont3xt
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        securityContext:
+          runAsNonRoot: true
+          # runAsUser: 1001 # OpenShift assigns
+          # runAsGroup: 1001 # OpenShift assigns
+          seccompProfile:
+            type: RuntimeDefault
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: release-name-arkime-config # Use helper
+---
+# Source: arkime/templates/deployment-viewer.yaml
+apiVersion: apps/v1
+kind: Deployment # Changed from DaemonSet to Deployment for viewer
+metadata:
+  name: release-name-arkime-viewer
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: viewer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: viewer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arkime
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/component: viewer
+      annotations:
+    spec:
+      serviceAccountName: release-name-arkime
+      securityContext:
+        runAsNonRoot: true
+        # runAsUser: 1001 # OpenShift will assign a user ID from the project's range
+        # fsGroup: 1001 # OpenShift will assign a group ID
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: arkime-viewer
+          image: "ghcr.io/arkime/arkime/arkime:v5-latest"
+          imagePullPolicy: Always
+          securityContext: # Container-level security context
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME # This might be less relevant for a Deployment vs DaemonSet
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ARKIME__elasticsearch
+              value: https://arkime-opensearch:9200
+            - name: ARKIME__elasticsearchBasicAuth
+              valueFrom:
+                secretKeyRef:
+                  key: elasticsearchBasicAuth
+                  name: arkime-elasticsearch-basic-auth
+            - name: ARKIME__serverSecret
+              valueFrom:
+                secretKeyRef:
+                  key: serverSecret
+                  name: arkime-server-secret
+                  optional: true
+            - name: ARKIME__passwordSecret
+              valueFrom:
+                secretKeyRef:
+                  key: passwordSecret
+                  name: arkime-password-secret
+                  optional: true
+            - name: ARKIME__debug
+              value: "0"
+            - name: ARKIME__plugins
+              value: wise.so
+            - name: ARKIME__wiseURL
+              value: http://arkime-wise.arkime.svc.cluster.local:8081
+            - name: ARKIME_centralViewer__plugins
+              value: wise.js
+          command:
+            - /bin/sh
+            - -c
+            - /opt/arkime/bin/docker.sh viewer --insecure --host ${POD_IP} --node ${NODE_NAME}
+          volumeMounts:
+            - name: arkime-config
+              mountPath: /opt/arkime/etc/
+            # Viewer typically doesn't need direct pcap access, but can if configured for local node viewing
+            # If viewer needs pcap access similar to capture, uncomment below and ensure values.viewer.pcapPath is set
+            # - name: pcap-dir
+            #   mountPath: /opt/arkime/raw
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          ports:
+            - containerPort: 8005
+              name: viewer-port
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: release-name-arkime-config
+      # If viewer needs pcap access similar to capture, uncomment below and ensure values.viewer.pcapPath is set
+      # - name: pcap-dir
+      #   hostPath:
+      #     path:  # Ensure this value exists or provide a default
+      #     type: DirectoryOrCreate
+---
+# Source: arkime/templates/deployment-wise.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-arkime-wise
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: wise
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arkime
+      app.kubernetes.io/instance: release-name
+      app.kubernetes.io/component: wise
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arkime
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/component: wise
+      annotations:
+    spec:
+      serviceAccountName: release-name-arkime
+      dnsPolicy: ClusterFirst
+      schedulerName: "default-scheduler"
+      containers:
+      - name: arkime-wise
+        image: "ghcr.io/arkime/arkime/arkime:v5-latest"
+        imagePullPolicy:
+        command:
+          - /opt/arkime/bin/docker.sh
+          - wise
+          - --
+          - -c
+          - elasticsearch://usersElasticsearch/arkime_configs/_doc/wise
+          - --insecure
+          - --webconfig
+          - --webcode
+          - "0000"
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: ARKIME_wiseService__webBasePath
+            value: "/wise/"
+          # Ensure ARKIME_wiseService__webBasePath is set from the specific value
+          - name: ARKIME_wiseService__webBasePath
+            value: "/wise/" # Global envs # Avoid duplicating if present in global
+          - name: ARKIME__elasticsearch
+            value: "https://arkime-opensearch:9200" # Avoid duplicating if present in global
+          - name: ARKIME__elasticsearchBasicAuth
+            value:  # Avoid duplicating if present in global
+          - name: ARKIME__serverSecret
+            value:  # Avoid duplicating if present in global
+          - name: ARKIME__passwordSecret
+            value:  # Avoid duplicating if present in global
+          - name: ARKIME__debug
+            value: "0" # Avoid duplicating if present in global
+          - name: ARKIME__plugins
+            value: "wise.so" # Avoid duplicating if present in global
+          - name: ARKIME__wiseURL
+            value: "http://arkime-wise.arkime.svc.cluster.local:8081" # Avoid duplicating if present in global
+          - name: ARKIME_centralViewer__plugins
+            value: "wise.js"
+        volumeMounts:
+          - name: arkime-config
+            mountPath: /opt/arkime/etc/
+        ports:
+          - containerPort: 8081
+            name: wise
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        securityContext:
+          runAsNonRoot: true
+          # runAsUser: 1001 # OpenShift assigns
+          # runAsGroup: 1001 # OpenShift assigns
+          seccompProfile:
+            type: RuntimeDefault
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: release-name-arkime-config # Use helper
+---
+# Source: arkime/templates/bootstrap-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: release-name-arkime-bootstrap
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: release-name-arkime
+        app.kubernetes.io/instance: bootstrap
+      annotations:
+    spec:
+      serviceAccountName: release-name-arkime
+      dnsPolicy: ClusterFirst
+      schedulerName: "default-scheduler"
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: arkime-bootstrap
+        image: "ghcr.io/arkime/arkime/arkime:v5-latest"
+        command: [ "/bin/sh", "-c", "/opt/arkime/db/db.pl --insecure ${ARKIME__elasticsearch} init --ifneeded" ]
+        imagePullPolicy:
+        env:
+          - name: ARKIME__elasticsearch
+            value: https://arkime-opensearch:9200
+          - name: ARKIME__elasticsearchBasicAuth
+            valueFrom:
+              secretKeyRef:
+                key: elasticsearchBasicAuth
+                name: arkime-elasticsearch-basic-auth
+          - name: ARKIME__serverSecret
+            valueFrom:
+              secretKeyRef:
+                key: serverSecret
+                name: arkime-server-secret
+                optional: true
+          - name: ARKIME__passwordSecret
+            valueFrom:
+              secretKeyRef:
+                key: passwordSecret
+                name: arkime-password-secret
+                optional: true
+          - name: ARKIME__debug
+            value: "0"
+          - name: ARKIME__plugins
+            value: wise.so
+          - name: ARKIME__wiseURL
+            value: http://arkime-wise.arkime.svc.cluster.local:8081
+          - name: ARKIME_centralViewer__plugins
+            value: wise.js
+        volumeMounts:
+          - name: arkime-config
+            mountPath: /opt/arkime/etc/
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          runAsNonRoot: true
+        # OpenShift will assign a user ID from the project's range.
+        # runAsUser: 1001
+        # fsGroup: 1001
+          seccompProfile:
+            type: RuntimeDefault
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true # Ensure config can be written if needed, or mount tmpfs
+          capabilities:
+            drop:
+              - ALL
+      volumes:
+      - name: arkime-config
+        configMap:
+          name: release-name-arkime-config # Use helper for configmap name
+      restartPolicy: Never
+  backoffLimit: 4
+---
+# Source: arkime/templates/route-central-viewer.yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: release-name-arkime-central-viewer
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: central-viewer
+spec:
+  path: "/"
+  to:
+    kind: Service
+    name: release-name-arkime-central-viewer
+    weight: 100
+  port:
+    targetPort: central-viewer
+---
+# Source: arkime/templates/route-cont3xt.yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: release-name-arkime-cont3xt
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: cont3xt
+spec:
+  path: /cont3xt/
+  to:
+    kind: Service
+    name: release-name-arkime-cont3xt
+    weight: 100
+  port:
+    targetPort: arkime-cont3xt
+---
+# Source: arkime/templates/route-wise.yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: release-name-arkime-wise
+  namespace: default
+  labels:
+    app.kubernetes.io/name: arkime
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/part-of: release-name
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: arkime-0.0.1
+    app.kubernetes.io/component: wise
+spec:
+  path: /wise/
+  to:
+    kind: Service
+    name: release-name-arkime-wise
+    weight: 100
+  port:
+    targetPort: arkime-wise
