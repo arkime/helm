@@ -97,6 +97,7 @@ captureViewerVolumes:
 
 # -- bootstrap is a job that inits the OpenSearch / ElasticSearch database
 bootstrap:
+  enabled: true
   env: []
   envFrom: []
   resources:
@@ -107,23 +108,21 @@ bootstrap:
   extraVolumeMounts: []
   # -- Additional volumes for the controller pod.
   extraVolumes: []
-  nodeSelector:
-    kubernetes.io/os: linux
-  # -- Additional labels to add into metadata.
-  additionalLabels: {}
-  # -- Additional annotations to add into metadata.
-  additionalAnnotations: {}
-  # -- Tolerations to allow the pod to be scheduled to nodes with taints.
-  tolerations: []
-  # -- Specify which Kubernetes scheduler should dispatch the pod.
-  schedulerName: default-scheduler
-  # -- Configure the DNS Policy for the pod
-  dnsPolicy: ClusterFirst
-  # -- Configure DNS Config for the pod
   dnsConfig: {}
   #  options:
   #    - name: ndots
   #      value: "1"
+  containerSecurityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
 
 # -- sensor is a daemonset that runs both capture and (optionally) viewer
@@ -204,6 +203,20 @@ centralViewer:
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
 
+  podSecurityContext:
+    fsGroup: 65532
+  containerSecurityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
   # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations: []
   # -- Specify which Kubernetes scheduler should dispatch the pod.
@@ -230,8 +243,16 @@ centralViewer:
     # -- The maximum number of pods that can be unavailable at any given time. Only one of minAvailable or maxUnavailable can be set.
     #maxUnavailable: 0
 
+# -- multies is an optional deployment for MultiES support
+multies:
+  enabled: false
+  replicas: 2
+  command: ["/opt/arkime/bin/docker.sh", "multies", "--insecure", "-n", "centralViewer"]
+  podSecurityContext: {}
+
 # -- cont3xt is a deployment
 cont3xt:
+  enabled: true
   replicas: 2
   command: ["/opt/arkime/bin/docker.sh", "cont3xt", "--insecure"]
   env:
@@ -251,6 +272,20 @@ cont3xt:
   additionalLabels: {}
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
+
+  podSecurityContext:
+    fsGroup: 65532
+  containerSecurityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations: []
@@ -280,6 +315,7 @@ cont3xt:
 
 # -- wise is a deployment
 wise:
+  enabled: true
   replicas: 2
   command: ["/opt/arkime/bin/docker.sh", "wise", "--", "-c", "elasticsearch://usersElasticsearch/arkime_configs/_doc/wise", "--insecure", "--webconfig", "--webcode", "0000"]
   env:
@@ -299,6 +335,20 @@ wise:
   additionalLabels: {}
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
+
+  podSecurityContext:
+    fsGroup: 65532
+  containerSecurityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations: []

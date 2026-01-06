@@ -77,17 +77,10 @@ spec:
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        {{- with .Values.bootstrap.containerSecurityContext }}
         securityContext:
-          runAsUser: 65532
-          runAsGroup: 65532
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop:
-              - ALL
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       volumes:
       - name: arkime-config
         configMap:

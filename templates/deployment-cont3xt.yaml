@@ -1,3 +1,4 @@
+{{- if .Values.cont3xt.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -38,7 +39,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "arkime.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
+      {{- with .Values.cont3xt.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -104,17 +105,10 @@ spec:
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        {{- with .Values.cont3xt.containerSecurityContext }}
         securityContext:
-          runAsUser: 65532
-          runAsGroup: 65532
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop:
-              - ALL
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       volumes:
       - name: arkime-config
         configMap:
@@ -158,3 +152,4 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ include "arkime.fullname" . }}
       app.kubernetes.io/instance: cont3xt
+{{- end -}}

@@ -15,6 +15,7 @@ spec:
   rules:
   - http:
       paths:
+        {{- if .Values.cont3xt.enabled }}
         - path: "/cont3xt/"
           pathType: Prefix
           backend:
@@ -22,6 +23,8 @@ spec:
               name: {{ include "arkime.fullname" . }}-cont3xt
               port:
                 name: arkime-cont3xt
+        {{- end }}
+        {{- if .Values.wise.enabled }}
         - path: "/wise/"
           pathType: Prefix
           backend:
@@ -29,6 +32,7 @@ spec:
               name: {{ include "arkime.fullname" . }}-wise
               port:
                 name: arkime-wise
+        {{- end }}
         - path: "/"
           pathType: Prefix
           backend:
