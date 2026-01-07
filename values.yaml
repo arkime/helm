@@ -124,7 +124,6 @@ bootstrap:
       drop:
         - ALL
 
-
 # -- sensor is a daemonset that runs both capture and (optionally) viewer
 sensor:
   nodeSelector:
@@ -202,21 +201,12 @@ centralViewer:
   additionalLabels: {}
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
-
-  podSecurityContext:
-    fsGroup: 65532
+  podSecurityContext: {}
+    # fsGroup: 65532
   containerSecurityContext:
     runAsUser: 65532
     runAsGroup: 65532
     runAsNonRoot: true
-    seccompProfile:
-      type: RuntimeDefault
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop:
-        - ALL
-
   # -- Tolerations to allow the pod to be scheduled to nodes with taints.
   tolerations: []
   # -- Specify which Kubernetes scheduler should dispatch the pod.
@@ -243,12 +233,21 @@ centralViewer:
     # -- The maximum number of pods that can be unavailable at any given time. Only one of minAvailable or maxUnavailable can be set.
     #maxUnavailable: 0
 
-# -- multies is an optional deployment for MultiES support
+# -- multies is an optional sidecar container within the centralViewer deployment.   
 multies:
   enabled: false
   replicas: 2
   command: ["/opt/arkime/bin/docker.sh", "multies", "--insecure", "-n", "centralViewer"]
-  podSecurityContext: {}
+  env: []
+  envFrom: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  containerSecurityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    runAsNonRoot: true
 
 # -- cont3xt is a deployment
 cont3xt:
@@ -273,8 +272,8 @@ cont3xt:
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
 
-  podSecurityContext:
-    fsGroup: 65532
+  podSecurityContext: {}
+    # fsGroup: 65532
   containerSecurityContext:
     runAsUser: 65532
     runAsGroup: 65532
@@ -336,8 +335,8 @@ wise:
   # -- Additional annotations to add into metadata.
   additionalAnnotations: {}
 
-  podSecurityContext:
-    fsGroup: 65532
+  podSecurityContext: {}
+    # fsGroup: 65532
   containerSecurityContext:
     runAsUser: 65532
     runAsGroup: 65532
