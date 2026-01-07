@@ -38,7 +38,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "arkime.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
+      {{- with .Values.centralViewer.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -104,10 +104,10 @@ spec:
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        {{- with .Values.centralViewer.containerSecurityContext }}
         securityContext:
-          runAsUser: 65532
-          runAsGroup: 65532
-          runAsNonRoot: true
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
           seccompProfile:
             type: RuntimeDefault
           allowPrivilegeEscalation: false
@@ -115,6 +115,46 @@ spec:
           capabilities:
             drop:
               - ALL
+      {{- if .Values.multies.enabled | default false }}
+      - name: multies
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command: 
+          {{- toYaml .Values.multies.command | nindent 10 }}
+        {{- if .Values.multies.args }}
+        args: 
+          {{- toYaml .Values.multies.args | nindent 10 }}
+        {{- end }}
+        env:
+          {{- if .Values.multies.env }}
+            {{- toYaml .Values.multies.env | nindent 10 }}
+          {{- end }}
+          {{- if .Values.multies.envFrom }}
+        envFrom:
+          {{- toYaml .Values.multies.envFrom | nindent 10 }}
+          {{- end }}
+        ports:
+          - name: multies
+            containerPort: {{ .Values.multies.port | default 8200 }}
+        volumeMounts:
+          - name: arkime-config
+            mountPath: /opt/arkime/etc/config.ini
+            subPath: config.ini
+        {{- with .Values.multies.resources }}
+        resources: 
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        {{- with .Values.multies.containerSecurityContext }}
+        securityContext:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+          seccompProfile:
+            type: RuntimeDefault
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+      {{- end }}
       volumes:
       - name: arkime-config
         configMap:
